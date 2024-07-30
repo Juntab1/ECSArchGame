@@ -39,23 +39,52 @@ enum ComponentId
 }
 
 using Type = std::vector<ComponentId>;
+// need to implement type eraser for Column since we don't know the type to start out with.
+// So, the program will not consider the type at runtime
+struct Column{
+    // holds a pointer to the type and its value
+    void *elements;
+    // the chosen size of each element
+    size_t element_size;
+    // how many elements are in the column
+    size_t count;
+}
 
 struct Archetype 
 {
+    // what components are present, no data value
     Type type;
     // this gives us a O(1). However, not helpful because extra space
     // unordered_set<ComponenetId> type_set;
     
-    // We always have less ComponentId than Archetype so having map is important
+    // We always have less ComponentId than Archetype so having a way to map is important
     ArchetypeId id; 
+    // holds the data value of each of the entities that exist for the Archetype, continious data to make
+    // the CPU cache predictable
+    std::vector<Column> componenets;
 };
 
 using ArchetypeSet = unordered_set<ArchetypeId>;
-// gives us all the archtype ids that the component is in
-unordered_map<ComponentId, ArchetypeSet> component_index;
 
+struct ArchetypeRecord 
+{
+    size_t column;
+}
+
+// keeping track of what column containing the given component
+using ArchetypeMap = unordered_map<ArchetypeId, ArchetypeRecord>;
+
+// gives us all the archtype ids that the component is in
+unordered_map<ComponentId, ArchetypeMap> component_index;
+
+struct Record
+{
+    Archetype& archetype;
+    // tells us what row to look at index wise from the column of components within the archetype
+    size_t row;
+}
 // keeps track of the associated archtype with the entityId
-unordered_map<EntityId, Archetype&> entity_index;
+unordered_map<EntityId, Record> entity_index;
 
 // find archetype for a list of components given
 unordered_map<Type, Archetype> archetype_index;
@@ -67,5 +96,44 @@ bool has_component(EntityId entity, ComponenetId component)
     return archetype_set.count(archetype.id) != 0;
 }
 
+// void* is to point to any data type, handle raw memory addresses 
+void* get_componenet(EntityId entity, ComponentId component) {
+
+}
+
+
+// way to look up all the archetypes that have a certain entity
+void which_arch(ComponentId componentId)
+{
+    ArchetypeSet& allArchContains = component_index[componentId];
+
+    for (Archetype& curr : allArchContains)
+    {
+        Console.WriteLine(curr);
+    }
+}
+
+// use arrays, it is predictable for the CPU to prefetch data from the RAM
+// OOP random memory access causing CPU cache to slow greatly down cause it can't prefetch well from
+// RAM, RAM just contains junk
+
+// Vectorized code means done at once, but the data needs to be continouis 
+
+// The ABC problem
+// if we have different entities with components of similar how can we make it continouis to make it predictable?
+// keeping one array for each component does not work
+/*
+    0: [  B  ]
+    1: [  B C]
+    2: [A B C]
+    3: [A B  ]
+    4: [A    ]
+    5: [A   C]
+    6: [    C]
+*/
+
+// Creating array per type would solve this problem
+
+// so that is why you need to keep the unique combination of components inside your archtpye
 
 
