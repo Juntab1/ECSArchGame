@@ -50,6 +50,12 @@ struct Column{
     size_t count;
 }
 
+
+struct ArchetypeEdge
+{
+    Archetype& add;
+    Archetype& remove;
+}
 struct Archetype 
 {
     // what components are present, no data value
@@ -61,7 +67,9 @@ struct Archetype
     ArchetypeId id; 
     // holds the data value of each of the entities that exist for the Archetype, continious data to make
     // the CPU cache predictable
-    std::vector<Column> componenets;
+    std::vector<Column> components;
+
+    unordered_map<ComponentId, ArchetypeEdge> edges;
 };
 
 using ArchetypeSet = unordered_set<ArchetypeId>;
@@ -97,9 +105,43 @@ bool has_component(EntityId entity, ComponenetId component)
 }
 
 // void* is to point to any data type, handle raw memory addresses 
+// like a normal get function this would be O(1), constant time
 void* get_componenet(EntityId entity, ComponentId component) {
+    // Remember, Record contains an archetype and row 
+    Record& record = entity_index[entity];
+    // get the archetype of the given entity
+    Archetype& archetype = record.archetype;
 
+    // get all archetypes that are associated with the componenet alone
+    ArchetypeMap archetypes = component_index[component];
+    // the archetype does not exist of the earlier inputed entity
+    if (archetypes.count(archetype.id) == 0)
+    {
+        return nullptr;
+    }
+
+    ArchetypeRecord& a_record = archetypes[archetype.id];
+    return archetype.columns[a_record.column][record.row];
 }
+
+void add_component(EntityId entity, ComponentId component)
+{
+    // find what row 
+    Record& record = entity_index[entity];
+    // we want to know the current archetype
+    Archetype& archetype = Record.archetype;
+    // we say the "next_archetype" is the key to the component
+    Archetype& next_archetype = archetype.add_archetype[component];
+    // a function that puts the new information into the row we want
+    move_entity(archetype, record.row, next_archetpye);
+}
+
+// problem when we want to add componenets to an entity! We have to get rid of the current archetype
+
+// archetype we are trying to find, and id is the new componentId we are adding to so we can create that new "column" in our arch map
+Archetype& add_to_archetype(Archetype& src, ComponentId id);
+
+
 
 
 // way to look up all the archetypes that have a certain entity
